@@ -1,0 +1,110 @@
+version: '3.8'
+
+# DEVELOPMENT ENVIRONMENT
+# Usage: docker-compose -f docker-compose.dev.yml up
+
+services:
+  # PostgreSQL Database (Development)
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: stocksense-db-dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devpassword123
+      POSTGRES_DB: stocksense_dev
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - stocksense-dev-network
+
+  # Redis Cache (Development)
+  redis-cache:
+    image: redis:7-alpine
+    container_name: stocksense-redis-dev
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - stocksense-dev-network
+
+  # FastAPI Backend (Development with hot reload)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: stocksense-backend-dev
+    ports:
+      - "8080:8080"
+    environment:
+      - ENV=development
+      - DEBUG=True
+      - DATABASE_URL=postgresql://postgres:devpassword123@postgres-db:5432/stocksense_dev
+      - REDIS_URL=redis://redis-cache:6379/0
+      - AWS_REGION=us-east-1
+      - CORS_ORIGINS=["http://localhost:3000","http://127.0.0.1:3000"]
+      - LOG_LEVEL=DEBUG
+      # Optional AWS credentials
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    networks:
+      - stocksense-dev-network
+    restart: unless-stopped
+    command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload --log-level debug
+
+  # Vue.js Frontend (Development with hot reload)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: stocksense-frontend-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+      - VITE_WS_URL=ws://localhost:8080
+      - VITE_ENV=development
+      - NODE_ENV=development
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - stocksense-dev-network
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+
+networks:
+  stocksense-dev-network:
+    driver: bridge
