@@ -55,9 +55,40 @@ export const stockApi = {
     return api.get(`/api/stock/${symbol}/summary`)
   },
 
+  // Get stock quote (real-time)
+  getStockQuote: (symbol) => {
+    return api.get(`/api/stock/${symbol}/quote`)
+  },
+
+  // Get company news
+  getCompanyNews: (symbol, days = 7) => {
+    return api.get(`/api/stock/${symbol}/news`, {
+      params: { days }
+    })
+  },
+
   // Get trends
   getTrends: () => {
     return api.get('/api/trends')
+  },
+
+  // Market endpoints
+  getMarketMovers: () => {
+    return api.get('/api/market/movers')
+  },
+
+  getMarketOverview: () => {
+    return api.get('/api/market/overview')
+  },
+
+  // Search symbols
+  searchSymbols: (query) => {
+    return api.get(`/api/search/${query}`)
+  },
+
+  // Data providers status
+  getProvidersStatus: () => {
+    return api.get('/api/providers/status')
   },
 
   // Get watchlist

@@ -20,7 +20,13 @@ class Settings(BaseSettings):
     # API Keys (optional, for premium features)
     ALPHA_VANTAGE_API_KEY: Optional[str] = None
     FINNHUB_API_KEY: Optional[str] = None
+    TWELVE_DATA_API_KEY: Optional[str] = None
+    POLYGON_API_KEY: Optional[str] = None
+    IEX_CLOUD_API_KEY: Optional[str] = None
     NEWS_API_KEY: Optional[str] = None
+
+    # Data provider preferences (prioritized order)
+    DATA_PROVIDER_PRIORITY: list = ["yahoo", "iex", "polygon", "finnhub", "twelvedata", "alphavantage"]
 
     # AWS Settings
     AWS_REGION: str = "us-east-1"
